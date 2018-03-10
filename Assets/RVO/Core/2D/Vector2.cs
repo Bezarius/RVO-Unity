@@ -32,7 +32,7 @@
 
 using System.Globalization;
 
-namespace RVO
+namespace RVO.Core._2D
 {
     /**
      * <summary>Defines a two-dimensional vector.</summary>

@@ -33,7 +33,7 @@
 using System.Collections.Generic;
 using System;
 
-namespace RVO
+namespace RVO.Core._2D
 {
     /**
      * <summary>Defines k-D trees for agents and static obstacles in the

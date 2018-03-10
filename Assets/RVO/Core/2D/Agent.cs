@@ -34,7 +34,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace RVO
+namespace RVO.Core._2D
 {
     /**
      * <summary>Defines an agent in the simulation.</summary>

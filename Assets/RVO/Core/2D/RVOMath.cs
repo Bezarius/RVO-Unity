@@ -32,7 +32,7 @@
 
 using System;
 
-namespace RVO
+namespace RVO.Core._2D
 {
     /**
      * <summary>Contains functions and constants used in multiple classes.

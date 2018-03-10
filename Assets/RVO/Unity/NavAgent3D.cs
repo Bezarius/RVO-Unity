@@ -1,9 +1,9 @@
-﻿using RVO.Core._2D;
+using RVO.Core._3D;
 using UnityEngine;
 
 namespace RVO.Unity
 {
-    public class NavAgent : CachedBehaviour
+    public class NavAgent3D : CachedBehaviour
     {
         private int _agentId;
 
@@ -21,7 +21,7 @@ namespace RVO.Unity
 
         [SerializeField] private Vector3 _velocity;
 
-        private Vector3 _targetPosition ;
+        private Vector3 _targetPosition;
 
         public Vector3 TargetPosition
         {
@@ -29,7 +29,7 @@ namespace RVO.Unity
             set
             {
                 _disableRVO = false;
-                _targetPosition = new Vector3(value.x, this.transform.position.y, value.z);
+                _targetPosition = value;
             }
         }
 
@@ -43,17 +43,17 @@ namespace RVO.Unity
         {
             base.Awake();
 
-            TargetPosition = new Vector3(Random.Range(-100, 100), Random.Range(-100, 100), Random.Range(-100, 100));
+            TargetPosition = new Vector3(Random.Range(-100, 100), this.transform.position.y, Random.Range(-100, 100));
 
             _agentId = Simulator.Instance.AddAgent(
-                ToRVOVector(this.transform.position),
+                this.transform.position,
                 _neighborDist,
                 _maxNeighbors,
                 _timeHorizon,
                 _timeHorizonObst,
                 _radius,
                 _maxSpeed,
-                ToRVOVector(_velocity)
+                _velocity
             );
         }
 
@@ -64,7 +64,10 @@ namespace RVO.Unity
                 _velocity = _preferredVelocity;
 
                 if (!_disableRVO)
-                    _velocity = ToUnityVector(Simulator.Instance.GetAgentVelocity(_agentId));
+                    _velocity = Simulator.Instance.GetAgentVelocity(_agentId);
+
+                if(float.IsNaN(_velocity.x) || float.IsNaN(_velocity.y) || float.IsNaN(_velocity.z))
+                    return; // todo: fix this posibility
 
                 // Apply velocity on transform, this is where you multiply by dt (velocity is in m/s)
                 transform.localPosition += _velocity * Time.deltaTime;
@@ -90,8 +93,8 @@ namespace RVO.Unity
 
             // Update agent parameters for next frame calculations
             // There may be a 1 frame lag depending on when Simulator is updated
-            Simulator.Instance.SetAgentPrefVelocity(_agentId, ToRVOVector(_preferredVelocity));
-            Simulator.Instance.SetAgentPosition(_agentId, ToRVOVector(transform.localPosition));
+            Simulator.Instance.SetAgentPrefVelocity(_agentId, _preferredVelocity);
+            Simulator.Instance.SetAgentPosition(_agentId, transform.localPosition);
         }
 
         public void OnDrawGizmos()
@@ -122,16 +125,6 @@ namespace RVO.Unity
             float dist = Random.Range(0, RandMax) * 0.0001f / RandMax;
 
             _preferredVelocity += dist * new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle));
-        }
-
-        private static Vector3 ToUnityVector(Core._2D.Vector2 vector)
-        {
-            return new Vector3(vector.X, 0, vector.Y);
-        }
-
-        private static Core._2D.Vector2 ToRVOVector(Vector3 vector)
-        {
-            return new Core._2D.Vector2(vector.x, vector.z);
         }
     }
 }

@@ -1,9 +1,9 @@
-﻿using RVO.Core._2D;
+﻿using RVO.Core._3D;
 using UnityEngine;
 
 namespace RVO.Unity
 {
-    public class RVOSimulatorController : MonoBehaviour
+    public class RVO3DSimulatorController : MonoBehaviour
     {
         [SerializeField]
         private bool _isMT;

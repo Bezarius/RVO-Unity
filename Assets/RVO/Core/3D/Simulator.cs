@@ -1,39 +1,8 @@
-/*
- * Simulator.cs
- * RVO2 Library C#
- *
- * Copyright 2008 University of North Carolina at Chapel Hill
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- * Please send all bug reports to <geom@cs.unc.edu>.
- *
- * The authors may be contacted via:
- *
- * Jur van den Berg, Stephen J. Guy, Jamie Snape, Ming C. Lin, Dinesh Manocha
- * Dept. of Computer Science
- * 201 S. Columbia St.
- * Frederick P. Brooks, Jr. Computer Science Bldg.
- * Chapel Hill, N.C. 27599-3175
- * United States of America
- *
- * <http://gamma.cs.unc.edu/RVO2/>
- */
-
 using System.Collections.Generic;
 using System.Threading;
+using Vector3 = UnityEngine.Vector3;
 
-namespace RVO.Core._2D
+namespace RVO.Core._3D
 {
     /**
      * <summary>Defines the simulation.</summary>
@@ -99,7 +68,6 @@ namespace RVO.Core._2D
         public bool IsMultithreaded = true;
 
         internal IList<Agent> Agents;
-        internal IList<Obstacle> Obstacles;
         internal KdTree KdTree;
         internal float TimeStep;
 
@@ -129,7 +97,7 @@ namespace RVO.Core._2D
          * <param name="position">The two-dimensional starting position of this
          * agent.</param>
          */
-        public int AddAgent(Vector2 position)
+        public int AddAgent(Vector3 position)
         {
             if (_defaultAgent == null)
             {
@@ -187,7 +155,7 @@ namespace RVO.Core._2D
          * <param name="velocity">The initial two-dimensional linear velocity of
          * this agent.</param>
          */
-        public int AddAgent(Vector2 position, float neighborDist, int maxNeighbors, float timeHorizon, float timeHorizonObst, float radius, float maxSpeed, Vector2 velocity)
+        public int AddAgent(Vector3 position, float neighborDist, int maxNeighbors, float timeHorizon, float timeHorizonObst, float radius, float maxSpeed, Vector3 velocity)
         {
             Agent agent = new Agent
             {
@@ -208,62 +176,6 @@ namespace RVO.Core._2D
         }
 
         /**
-         * <summary>Adds a new obstacle to the simulation.</summary>
-         *
-         * <returns>The number of the first vertex of the obstacle, or -1 when
-         * the number of vertices is less than two.</returns>
-         *
-         * <param name="vertices">List of the vertices of the polygonal obstacle
-         * in counterclockwise order.</param>
-         *
-         * <remarks>To add a "negative" obstacle, e.g. a bounding polygon around
-         * the environment, the vertices should be listed in clockwise order.
-         * </remarks>
-         */
-        public int AddObstacle(IList<Vector2> vertices)
-        {
-            if (vertices.Count < 2)
-            {
-                return -1;
-            }
-
-            int obstacleNo = Obstacles.Count;
-
-            for (int i = 0; i < vertices.Count; ++i)
-            {
-                Obstacle obstacle = new Obstacle { Point = vertices[i] };
-
-                if (i != 0)
-                {
-                    obstacle.Previous = Obstacles[Obstacles.Count - 1];
-                    obstacle.Previous.Next = obstacle;
-                }
-
-                if (i == vertices.Count - 1)
-                {
-                    obstacle.Next = Obstacles[obstacleNo];
-                    obstacle.Next.Previous = obstacle;
-                }
-
-                obstacle.Direction = RVOMath.Normalize(vertices[(i == vertices.Count - 1 ? 0 : i + 1)] - vertices[i]);
-
-                if (vertices.Count == 2)
-                {
-                    obstacle.Convex = true;
-                }
-                else
-                {
-                    obstacle.Convex = (RVOMath.LeftOf(vertices[(i == 0 ? vertices.Count - 1 : i - 1)], vertices[i], vertices[(i == vertices.Count - 1 ? 0 : i + 1)]) >= 0.0f);
-                }
-
-                obstacle.Id = Obstacles.Count;
-                Obstacles.Add(obstacle);
-            }
-
-            return obstacleNo;
-        }
-
-        /**
          * <summary>Clears the simulation.</summary>
          */
         public void Clear()
@@ -271,7 +183,6 @@ namespace RVO.Core._2D
             Agents = new List<Agent>();
             _defaultAgent = null;
             KdTree = new KdTree();
-            Obstacles = new List<Obstacle>();
             _globalTime = 0.0f;
             TimeStep = 0.1f;
 
@@ -421,56 +332,6 @@ namespace RVO.Core._2D
         }
 
         /**
-         * <summary>Returns the count of obstacle neighbors taken into account
-         * to compute the current velocity for the specified agent.</summary>
-         *
-         * <returns>The count of obstacle neighbors taken into account to
-         * compute the current velocity for the specified agent.</returns>
-         *
-         * <param name="agentNo">The number of the agent whose count of obstacle
-         * neighbors is to be retrieved.</param>
-         */
-        public int GetAgentNumObstacleNeighbors(int agentNo)
-        {
-            return Agents[agentNo].ObstacleNeighbors.Count;
-        }
-
-        /**
-         * <summary>Returns the specified obstacle neighbor of the specified
-         * agent.</summary>
-         *
-         * <returns>The number of the first vertex of the neighboring obstacle
-         * edge.</returns>
-         *
-         * <param name="agentNo">The number of the agent whose obstacle neighbor
-         * is to be retrieved.</param>
-         * <param name="neighborNo">The number of the obstacle neighbor to be
-         * retrieved.</param>
-         */
-        public int GetAgentObstacleNeighbor(int agentNo, int neighborNo)
-        {
-            return Agents[agentNo].ObstacleNeighbors[neighborNo].Value.Id;
-        }
-
-        /**
-         * <summary>Returns the ORCA constraints of the specified agent.
-         * </summary>
-         *
-         * <returns>A list of lines representing the ORCA constraints.</returns>
-         *
-         * <param name="agentNo">The number of the agent whose ORCA constraints
-         * are to be retrieved.</param>
-         *
-         * <remarks>The halfplane to the left of each line is the region of
-         * permissible velocities with respect to that ORCA constraint.
-         * </remarks>
-         */
-        public IList<Line> GetAgentOrcaLines(int agentNo)
-        {
-            return Agents[agentNo].OrcaLines;
-        }
-
-        /**
          * <summary>Returns the two-dimensional position of a specified agent.
          * </summary>
          *
@@ -480,7 +341,7 @@ namespace RVO.Core._2D
          * <param name="agentNo">The number of the agent whose two-dimensional
          * position is to be retrieved.</param>
          */
-        public Vector2 GetAgentPosition(int agentNo)
+        public Vector3 GetAgentPosition(int agentNo)
         {
             return Agents[agentNo].Position;
         }
@@ -495,7 +356,7 @@ namespace RVO.Core._2D
          * <param name="agentNo">The number of the agent whose two-dimensional
          * preferred velocity is to be retrieved.</param>
          */
-        public Vector2 GetAgentPrefVelocity(int agentNo)
+        public Vector3 GetAgentPrefVelocity(int agentNo)
         {
             return Agents[agentNo].PrefVelocity;
         }
@@ -551,7 +412,7 @@ namespace RVO.Core._2D
          * <param name="agentNo">The number of the agent whose two-dimensional
          * linear velocity is to be retrieved.</param>
          */
-        public Vector2 GetAgentVelocity(int agentNo)
+        public Vector3 GetAgentVelocity(int agentNo)
         {
             return Agents[agentNo].Velocity;
         }
@@ -578,17 +439,6 @@ namespace RVO.Core._2D
         }
 
         /**
-         * <summary>Returns the count of obstacle vertices in the simulation.
-         * </summary>
-         *
-         * <returns>The count of obstacle vertices in the simulation.</returns>
-         */
-        public int GetNumObstacleVertices()
-        {
-            return Obstacles.Count;
-        }
-
-        /**
          * <summary>Returns the count of workers.</summary>
          *
          * <returns>The count of workers.</returns>
@@ -599,51 +449,6 @@ namespace RVO.Core._2D
         }
 
         /**
-         * <summary>Returns the two-dimensional position of a specified obstacle
-         * vertex.</summary>
-         *
-         * <returns>The two-dimensional position of the specified obstacle
-         * vertex.</returns>
-         *
-         * <param name="vertexNo">The number of the obstacle vertex to be
-         * retrieved.</param>
-         */
-        public Vector2 GetObstacleVertex(int vertexNo)
-        {
-            return Obstacles[vertexNo].Point;
-        }
-
-        /**
-         * <summary>Returns the number of the obstacle vertex succeeding the
-         * specified obstacle vertex in its polygon.</summary>
-         *
-         * <returns>The number of the obstacle vertex succeeding the specified
-         * obstacle vertex in its polygon.</returns>
-         *
-         * <param name="vertexNo">The number of the obstacle vertex whose
-         * successor is to be retrieved.</param>
-         */
-        public int GetNextObstacleVertexNo(int vertexNo)
-        {
-            return Obstacles[vertexNo].Next.Id;
-        }
-
-        /**
-         * <summary>Returns the number of the obstacle vertex preceding the
-         * specified obstacle vertex in its polygon.</summary>
-         *
-         * <returns>The number of the obstacle vertex preceding the specified
-         * obstacle vertex in its polygon.</returns>
-         *
-         * <param name="vertexNo">The number of the obstacle vertex whose
-         * predecessor is to be retrieved.</param>
-         */
-        public int GetPrevObstacleVertexNo(int vertexNo)
-        {
-            return Obstacles[vertexNo].Previous.Id;
-        }
-
-        /**
          * <summary>Returns the time step of the simulation.</summary>
          *
          * <returns>The present time step of the simulation.</returns>
@@ -651,37 +456,6 @@ namespace RVO.Core._2D
         public float GetTimeStep()
         {
             return TimeStep;
-        }
-
-        /**
-         * <summary>Processes the obstacles that have been added so that they
-         * are accounted for in the simulation.</summary>
-         *
-         * <remarks>Obstacles added to the simulation after this function has
-         * been called are not accounted for in the simulation.</remarks>
-         */
-        public void ProcessObstacles()
-        {
-            KdTree.BuildObstacleTree();
-        }
-
-        /**
-         * <summary>Performs a visibility query between the two specified points
-         * with respect to the obstacles.</summary>
-         *
-         * <returns>A boolean specifying whether the two points are mutually
-         * visible. Returns true when the obstacles have not been processed.
-         * </returns>
-         *
-         * <param name="point1">The first point of the query.</param>
-         * <param name="point2">The second point of the query.</param>
-         * <param name="radius">The minimal distance between the line connecting
-         * the two points and the obstacles in order for the points to be
-         * mutually visible (optional). Must be non-negative.</param>
-         */
-        public bool QueryVisibility(Vector2 point1, Vector2 point2, float radius)
-        {
-            return KdTree.QueryVisibility(point1, point2, radius);
         }
 
         /**
@@ -716,7 +490,7 @@ namespace RVO.Core._2D
          * <param name="velocity">The default initial two-dimensional linear
          * velocity of a new agent.</param>
          */
-        public void SetAgentDefaults(float neighborDist, int maxNeighbors, float timeHorizon, float timeHorizonObst, float radius, float maxSpeed, Vector2 velocity)
+        public void SetAgentDefaults(float neighborDist, int maxNeighbors, float timeHorizon, float timeHorizonObst, float radius, float maxSpeed, Vector3 velocity)
         {
             if (_defaultAgent == null)
             {
@@ -782,7 +556,7 @@ namespace RVO.Core._2D
          * <param name="position">The replacement of the two-dimensional
          * position.</param>
          */
-        public void SetAgentPosition(int agentNo, Vector2 position)
+        public void SetAgentPosition(int agentNo, Vector3 position)
         {
             Agents[agentNo].Position = position;
         }
@@ -796,7 +570,7 @@ namespace RVO.Core._2D
          * <param name="prefVelocity">The replacement of the two-dimensional
          * preferred velocity.</param>
          */
-        public void SetAgentPrefVelocity(int agentNo, Vector2 prefVelocity)
+        public void SetAgentPrefVelocity(int agentNo, Vector3 prefVelocity)
         {
             Agents[agentNo].PrefVelocity = prefVelocity;
         }
@@ -851,7 +625,7 @@ namespace RVO.Core._2D
          * <param name="velocity">The replacement two-dimensional linear
          * velocity.</param>
          */
-        public void SetAgentVelocity(int agentNo, Vector2 velocity)
+        public void SetAgentVelocity(int agentNo, Vector3 velocity)
         {
             Agents[agentNo].Velocity = velocity;
         }

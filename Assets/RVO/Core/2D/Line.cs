@@ -30,7 +30,7 @@
  * <http://gamma.cs.unc.edu/RVO2/>
  */
 
-namespace RVO
+namespace RVO.Core._2D
 {
     /**
      * <summary>Defines a directed line.</summary>
